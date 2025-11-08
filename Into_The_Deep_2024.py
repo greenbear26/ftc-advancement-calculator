@@ -53,7 +53,6 @@ def main():
                     elimination matches do not get points for alliance \
                     advancement, but do get points for being on the alliance.")
 
-    # if len(sys.argv) > 1:
     event_code = streamlit.text_input("Event Code")
     try:
         teams = request.getTeamsFromEvent(event_code, 2024)

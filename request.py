@@ -1,8 +1,7 @@
 import requests
 
-def getTeamsFromEvent(eventCode, season):
-    url = "https://api.ftcscout.org/graphql"
-
+URL = "https://api.ftcscout.org/graphql"
+def make_request(eventCode, season):
     statsQuery = str(season)+"Trad" if season==2020 or season==2021 else season
 
     query = f"""
@@ -31,6 +30,10 @@ def getTeamsFromEvent(eventCode, season):
                 name
               }}
             }}
+            relatedEvents {{
+              code
+              divisionCode
+            }}
           }}
         }}
     """
@@ -40,7 +43,7 @@ def getTeamsFromEvent(eventCode, season):
       "code": eventCode
     }
 
-# Data to be sent in the request body
+    # Data to be sent in the request body
     payload = {
         "query": query,
         "variables": variables
@@ -49,7 +52,7 @@ def getTeamsFromEvent(eventCode, season):
     data = None
     try:
         # Make the POST request with JSON data
-        response = requests.post(url, json=payload)
+        response = requests.post(URL, json=payload)
 
         # Check if the request was successful (status code 201 Created)
         if response.status_code == 200:
@@ -57,15 +60,30 @@ def getTeamsFromEvent(eventCode, season):
             print("POST Request Successful:")
         else:
             print(f"Error: {response.status_code}")
+
+        return data
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
+        return None
 
-    teams = data["data"]["eventByCode"]["teams"]
+
+def getTeamsFromEvent(eventCode, season):
+    eventCode = eventCode.upper()
+    data = make_request(eventCode, season)
+    teams = []
+
+    related_events = data["data"]["eventByCode"]["relatedEvents"]
+    if related_events and all([code["divisionCode"] is not None for code in related_events]):
+        for event in related_events:
+            new_data = make_request(event["code"], season)
+            teams.extend(new_data["data"]["eventByCode"]["teams"])
+    else:
+        teams = data["data"]["eventByCode"]["teams"]
 
     # Removing empty teams
     teams = [team for team in teams if team["stats"]]
 
-# Removing unnecessary matches
+    # Removing unnecessary matches
     for team in teams:
         matches = team["matches"]
         # Filter out non-"M" matches
